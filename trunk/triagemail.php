@@ -29,18 +29,49 @@ $device = getDevice();
 	
 	if($_POST['logout']){
 		// distroy all the variable and logout
-		$_SESSION['inTriage'] = null;
-		unset($_SESSION['inTriage']);		
-
+		unset($_SESSION['username']);
+		unset($_SESSION['password']);
+		unset($_SESSION['connectionString']);
+		unset($_SESSION['inTriage']);
+		unset($_SESSION['msg_num']);
+		unset($_SESSION['msg_total']);
+		
+		
 		echo '<div class="message">'.translate('Logged out',$lang).'</div>';
 		renderLogin($device,$lang); 
 		
 	} elseif($_SESSION['inTriage']){
-		// get next message and continue
-		echo 'connect to server, slowly loop through each email waiting for instructions';
+		// need to reconnect and create an $mbox
+		$mbox = imap_open($_SESSION['connectString'], $_SESSION['username'], $_SESSION['password']);
 		
+		if($_POST['delete']){
+			// delete
+			imap_delete($mbox,$_SESSION['msg_num']);
+			$_SESSION['msg_total']--;
+			imap_expunge($mbox);
+		} elseif ($_POST['act']) {
+			echo 'reply box here';
+		} elseif ($_POST['defer']){
+			// do not mark as read, but skip it
+			$_SESSION['msg_num']++;			
+		} else {
+			// ignore
+			//mark as read THIS IS NOT working with POP3 Grrrr!
+			$status = imap_setflag_full($mbox, $_SESSION['msg_num'], "\Seen");
+			$_SESSION['msg_num']++;
+		}
+		
+		// get next message
+		$header = imap_header($mbox, $_SESSION['msg_num']);
+		$from    = $header->fromaddress;
+		$subject = $header->subject;
+		
+		renderMessageCount($_SESSION['msg_num'],$_SESSION['msg_total'],$lang);
+		renderPreview($from,$subject,$lang);
 		renderLogout($device,$lang);
-				
+		
+		// clean-up
+		imap_close($mbox);
 	} elseif($_POST['login']) {
 		if((trim($_POST['username']) != '') && (trim($_POST['password']) != '') && (trim($_POST['server']) != '')){
 			// scrub the input
@@ -49,17 +80,37 @@ $device = getDevice();
 			$server   = addslashes(trim($_POST['server']));
 			// need to build this better
 			$connectString = '{pop.gmail.com:995/pop3/ssl/novalidate-cert/notls}INBOX';
+			//$connectString = '{imap.gmail.com:993/imap/ssl}INBOX';
 
 			$mbox = imap_open($connectString, $username, $password);
 			if($mbox){
-				$num_msg = imap_num_msg($mbox);
-				echo '<div class="message">'.$num_msg.' '.translate(pluralize('message',$num_msg),$lang).' '.translate(pluralize('is',$num_msg),$lang).' '.translate('waiting for your attention.',$lang).'</div>';
+				//$num_msg = imap_num_msg($mbox);
+				$num_msg = imap_status($mbox,$_SESSION['connectString'], SA_UNSEEN);
+				$num_msg = $num_msg->unseen;
+
+				if($num_msg > 0){
+				  echo 'Begin';
+				  renderMessageCount(1,$num_msg,$lang);
+				  
+				  $header = imap_header($mbox, 1);
+				  $from    = $header->fromaddress;
+				  $subject = $header->subject;
+				  				  
+				  renderPreview($from,$subject,$lang);
+				} else {
+				  echo '<div class="message">Your Inbox is empty!</div>';
+				}
 				
 				renderLogout($device,$lang);
 				
 				// setup session variables so we can loop through emails individually w/o having to constantly login
 				$_SESSION['inTriage'] = true;
-
+				$_SESSION['msg_num']  = 1;
+				$_SESSION['username'] = $username;
+				$_SESSION['password'] = $password;
+				$_SESSION['connectString']   = $connectString;
+				$_SESSION['msg_total'] = $num_msg;
+				
 				// clean-up
 				imap_expunge($mbox);
 				imap_close($mbox);
@@ -161,6 +212,20 @@ function renderLogin($device,$lang){
 
 function renderLogout($device,$lang){
 	echo '<input type="submit" value="'.translate('Logout',$lang).'" name="logout" />';
+}
+
+function renderPreview($from,$subject,$lang){
+  echo '<div>FROM: '.htmlspecialchars($from).'</div>';
+  echo '<div>SUBJECT: '.htmlspecialchars($subject).'</div>';
+
+  echo '<input type="submit" name="delete" value="DELETE" />';
+  echo '<input type="submit" name="act" value="ACT" />';
+  echo '<input type="submit" name="defer" value="DEFER" />';
+  echo '<input type="submit" name="ignore" value="IGNORE" />';
+}
+
+function renderMessageCount($pos,$total,$lang){
+  echo '<div class="message">'.$pos.'/'.$total.' '.translate(pluralize('message',$total),$lang).'</div>';
 }
 
 ?>
