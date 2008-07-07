@@ -32,127 +32,121 @@ $device = getDevice();
 		.act    { color: white; position: absolute; left: 230px; display: block; width: 200px; text-align: center; top: 280px;}
 		.defer  { color: white; position: absolute; left: 450px; display: block; width: 200px; text-align: center; top: 280px;}
 		.ignore { color: white; position: absolute; left: 670px; display: block; width: 200px; text-align: center; top: 280px;}
+		form { padding: 0 20px;}
 	</style>
   </head>
   <body id="triagemail-com">
+	<h1>triagemail.com</h1>
+	<form action="<%=$_SERVER['PHP_SELF']%>" method="post">
 <?php
-	echo '<h1>triagemail.com</h1>';
-	echo '<form action="'.$_SERVER['PHP_SELF'].'" method="post">';
-	// Step #1
-	// display login
 	
-	if($_POST['logout']){
-		// distroy all the variable and logout
-		unset($_SESSION['username']);
-		unset($_SESSION['password']);
-		unset($_SESSION['connectionString']);
-		unset($_SESSION['inTriage']);
-		unset($_SESSION['msg_num']);
-		unset($_SESSION['msg_total']);
-		
-		
-		echo '<div class="message">'.translate('Logged out',$lang).'</div>';
-		renderLogin($device,$lang); 
-		
-	} elseif($_SESSION['inTriage']){
-		// need to reconnect and create an $mbox
-		$mbox = imap_open($_SESSION['connectString'], $_SESSION['username'], $_SESSION['password']);
-		renderMessageCount($_SESSION['msg_num'],$_SESSION['msg_total'],$lang);
-		
-		
-		if(!($_POST['act'])){
-			if($_POST['delete']){
-				// delete
-				imap_delete($mbox,$_SESSION['msg_num']);
-				$_SESSION['msg_total']--;
-				imap_expunge($mbox);
-			} elseif ($_POST['defer']){
-				// do not mark as read, but skip it
-				$_SESSION['msg_num']++;			
-			} elseif($_POST['ignore']) {
-				// ignore
-				//mark as read THIS IS NOT working with POP3 Grrrr!
-				$status = imap_setflag_full($mbox, $_SESSION['msg_num'], "\Seen");
-				$_SESSION['msg_num']++;
-			}
-			// get next message
-			$header = imap_header($mbox, $_SESSION['msg_num']);
-			$from    = $header->fromaddress;
-			$subject = $header->subject;
-
-			renderPreview($from,$subject,$lang);
-
-		} else {
-			echo 'reply box here';
-		}
-		
-		renderLogout($device,$lang);		
-		// clean-up			
-		imap_close($mbox);
-	} elseif($_POST['login']) {
-		if((trim($_POST['username']) != '') && (trim($_POST['password']) != '') && (trim($_POST['server']) != '')){
-			// scrub the input
-			$username = addslashes(trim($_POST['username']));
-			$password = addslashes(trim($_POST['password']));
-			$server   = addslashes(trim($_POST['server']));
-			// need to build this better
-			$connectString = '{pop.gmail.com:995/pop3/ssl/novalidate-cert/notls}INBOX';
-			//$connectString = '{imap.gmail.com:993/imap/ssl}INBOX';
-
-			$mbox = imap_open($connectString, $username, $password);
-			if($mbox){
-				//$num_msg = imap_num_msg($mbox);
-				$num_msg = imap_status($mbox,$_SESSION['connectString'], SA_UNSEEN);
-				$num_msg = $num_msg->unseen;
-
-				if($num_msg > 0){
-				  renderMessageCount(1,$num_msg,$lang);
-				  
-				  $header = imap_header($mbox, 1);
-				  $from    = $header->fromaddress;
-				  $subject = $header->subject;
-				  				  
-				  renderPreview($from,$subject,$lang);
-				} else {
-				  echo '<div class="message">Your Inbox is empty!</div>';
+	if(!checkRequirements()){
+		echo '<div class="error">This version of PHP does NOT have the required libraries. Please see triagemail.com for more information.</div>';
+	} else {	
+		if($_POST['logout']){
+			// distroy all the variable and logout
+			unset($_SESSION['username']);
+			unset($_SESSION['password']);
+			unset($_SESSION['connectionString']);
+			unset($_SESSION['inTriage']);
+			unset($_SESSION['msg_num']);
+			unset($_SESSION['msg_total']);
+			
+			
+			echo '<div class="message">'.translate('Logged out',$lang).'</div>';
+			renderLogin($device,$lang); 
+			
+		} elseif($_SESSION['inTriage']){
+			// need to reconnect and create an $mbox
+			$mbox = imap_open($_SESSION['connectString'], $_SESSION['username'], $_SESSION['password']);
+			renderMessageCount($_SESSION['msg_num'],$_SESSION['msg_total'],$lang);
+			
+			
+			if(!($_POST['act'])){
+				if($_POST['delete']){
+					// delete
+					imap_delete($mbox,$_SESSION['msg_num']);
+					$_SESSION['msg_total']--;
+					imap_expunge($mbox);
+				} elseif ($_POST['defer']){
+					// do not mark as read, but skip it
+					$_SESSION['msg_num']++;			
+				} elseif($_POST['ignore']) {
+					// ignore
+					//mark as read THIS IS NOT working with POP3 Grrrr!
+					$status = imap_setflag_full($mbox, $_SESSION['msg_num'], "\Seen");
+					$_SESSION['msg_num']++;
 				}
-				
-				renderLogout($device,$lang);
-				
-				// setup session variables so we can loop through emails individually w/o having to constantly login
-				$_SESSION['inTriage'] = true;
-				$_SESSION['msg_num']  = 1;
-				$_SESSION['username'] = $username;
-				$_SESSION['password'] = $password;
-				$_SESSION['connectString']   = $connectString;
-				$_SESSION['msg_total'] = $num_msg;
-				
-				// clean-up
-				imap_expunge($mbox);
-				imap_close($mbox);
-				
+				// get next message
+				$header = imap_header($mbox, $_SESSION['msg_num']);
+				$from    = $header->fromaddress;
+				$subject = $header->subject;
+	
+				renderPreview($from,$subject,$lang);
+	
 			} else {
-				echo '<div class="error">'.translate('There was an error connecting to',$lang).' '.$server.'. '.translate('Please try again',$lang).'.</div>';				
+				echo 'reply box here';
+			}
+			
+			renderLogout($device,$lang);		
+			// clean-up			
+			imap_close($mbox);
+		} elseif($_POST['login']) {
+			if((trim($_POST['username']) != '') && (trim($_POST['password']) != '') && (trim($_POST['server']) != '')){
+				// scrub the input
+				$username = addslashes(trim($_POST['username']));
+				$password = addslashes(trim($_POST['password']));
+				$server   = addslashes(trim($_POST['server']));
+				// need to build this better
+				$connectString = '{pop.gmail.com:995/pop3/ssl/novalidate-cert/notls}INBOX';
+				//$connectString = '{imap.gmail.com:993/imap/ssl}INBOX';
+	
+				$mbox = imap_open($connectString, $username, $password);
+				if($mbox){
+					//$num_msg = imap_num_msg($mbox);
+					$num_msg = imap_status($mbox,$_SESSION['connectString'], SA_UNSEEN);
+					$num_msg = $num_msg->unseen;
+	
+					if($num_msg > 0){
+					  renderMessageCount(1,$num_msg,$lang);
+					  
+					  $header = imap_header($mbox, 1);
+					  $from    = $header->fromaddress;
+					  $subject = $header->subject;
+					  				  
+					  renderPreview($from,$subject,$lang);
+					} else {
+					  echo '<div class="message">Your Inbox is empty!</div>';
+					}
+					
+					renderLogout($device,$lang);
+					
+					// setup session variables so we can loop through emails individually w/o having to constantly login
+					$_SESSION['inTriage'] = true;
+					$_SESSION['msg_num']  = 1;
+					$_SESSION['username'] = $username;
+					$_SESSION['password'] = $password;
+					$_SESSION['connectString']   = $connectString;
+					$_SESSION['msg_total'] = $num_msg;
+					
+					// clean-up
+					imap_expunge($mbox);
+					imap_close($mbox);
+					
+				} else {
+					echo '<div class="error">'.translate('There was an error connecting to',$lang).' '.$server.'. '.translate('Please try again',$lang).'.</div>';				
+					renderLogin($device,$lang);
+				}
+			} else {
+				echo '<div class="error">'.translate('Username, password or server were blank',$lang).'</div>';
 				renderLogin($device,$lang);
 			}
 		} else {
-			echo '<div class="error">'.translate('Username, password or server were blank',$lang).'</div>';
 			renderLogin($device,$lang);
 		}
-	} else {
-		renderLogin($device,$lang);
 	}
-	
-	echo '</form>';
-
-// Step #2
-// fetch next email and request action
-
-// Step #3
-// deal with response and go to step #2 until empty
-
-
 ?>
+	</form>
   </body>
 </html>
 
@@ -258,6 +252,16 @@ function renderPreview($from,$subject,$lang){
 
 function renderMessageCount($pos,$total,$lang){
   echo '<div class="counter">'.$pos.'/'.$total.' '.translate(pluralize('message',$total),$lang).'</div>';
+}
+
+function checkRequirements(){
+	// check for the availability of various functions in your PHP install
+	
+	// IMAP is needed
+	if(function_exists('imap_open') && function_exists('mail')){ return true; }
+	
+	// everything looks good!
+	return false;
 }
 
 ?>
