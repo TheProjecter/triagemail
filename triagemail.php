@@ -28,10 +28,10 @@ $device = getDevice();
 		.counter { position: absolute; text-align: right; right: 5px; top: 48px; width: 100%; color: white; }
 		.logout { position: absolute; right: 5px; top: 10px;}
 		.button { display: block; margin: 10px; height: 200px; width: 200px; float: left;}
-		.delete { color: white; position: absolute; left:  10px; display: block; width: 200px; text-align: center; top: 280px;}
-		.act    { color: white; position: absolute; left: 230px; display: block; width: 200px; text-align: center; top: 280px;}
-		.defer  { color: white; position: absolute; left: 450px; display: block; width: 200px; text-align: center; top: 280px;}
-		.ignore { color: white; position: absolute; left: 670px; display: block; width: 200px; text-align: center; top: 280px;}
+		.delete { color: white; position: absolute; left:  20px; display: block; width: 200px; text-align: center; top: 270px;}
+		.act    { color: white; position: absolute; left: 240px; display: block; width: 200px; text-align: center; top: 270px;}
+		.defer  { color: white; position: absolute; left: 460px; display: block; width: 200px; text-align: center; top: 270px;}
+		.ignore { color: white; position: absolute; left: 680px; display: block; width: 200px; text-align: center; top: 270px;}
 		form { padding: 0 20px;}
 	</style>
   </head>
@@ -100,12 +100,13 @@ $device = getDevice();
 				// need to build this better
 				$connectString = '{pop.gmail.com:995/pop3/ssl/novalidate-cert/notls}INBOX';
 				$connectString = '{imap.gmail.com:993/imap/ssl}INBOX';
-	
+				$connectString = '{'.$server.':993/imap/ssl}INBOX';
+
 				$mbox = imap_open($connectString, $username, $password);
 				if($mbox){
 					//$num_msg = imap_num_msg($mbox);
-					$num_msg = imap_status($mbox,$_SESSION['connectString'], SA_UNSEEN);
-					$num_msg = $num_msg->unseen;
+					$num_msg = imap_status($mbox,$_SESSION['connectString']);
+					//$num_msg = $num_msg->unseen;
 	
 					if($num_msg > 0){
 					  renderMessageCount(1,$num_msg,$lang);
