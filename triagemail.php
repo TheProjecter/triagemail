@@ -72,6 +72,18 @@ $device = getDevice();
 					// ignore
 					//mark as read THIS IS NOT working with POP3 Grrrr!
 					$status = imap_setflag_full($mbox, $_SESSION['unread_list'][$_SESSION['curr_index']], "\Seen");
+				} elseif ($_POST['reply']){
+					// send the message
+					$header  = imap_header($mbox, $_SESSION['unread_list'][$_SESSION['curr_index']]);
+					$to      = $header->reply_toaddress;
+					$subject = $header->subject;
+										
+					// send the message
+					imap_mail($to,$subject,$_POST['message']);
+					//echo imap_last_error();
+					
+					// mark it as read
+					$status = imap_setflag_full($mbox, $_SESSION['unread_list'][$_SESSION['curr_index']], "\Seen");
 				}
 				$_SESSION['curr_index'] = ($_SESSION['curr_index'])+1;
 							
@@ -80,8 +92,8 @@ $device = getDevice();
 					// we have reached the end of the list of unread messages. What do to now?
 					echo '<div class="message">end of triage!</div>';
 					$temp = count(imap_search($mbox,'UNSEEN'));
-					if($temp > 0){
-						echo '<div>There are '.$temp.' messages still un-read</div>';
+					if(imap_search($mbox,'UNSEEN')){
+						echo '<div>There '.pluralize('is',$temp).' '.$temp.' messages still un-read</div>';
 						echo '<div>You you wish to QUIT or Triage the remaining '.pluralize('message',$temp).'?</div>';
 					}
 					renderLogout($device,$lang);
@@ -119,6 +131,7 @@ $device = getDevice();
 				$connectString = '{pop.gmail.com:995/pop3/ssl/novalidate-cert/notls}INBOX';
 				$connectString = '{imap.gmail.com:993/imap/ssl}INBOX';
 				$connectString = '{'.$server.':993/imap/ssl}INBOX';
+				$connectString = '{'.$server.':993/imap/ssl/novalidate-cert/notls}INBOX';
 
 				$mbox = @imap_open($connectString, $username, $password);
 				if($mbox){
@@ -157,7 +170,7 @@ $device = getDevice();
 					echo '<div class="error">'.translate('There was an error connecting to',$lang).' '.$server.'. '.translate('Please try again',$lang).'.</div>';				
 					renderLogin($device,$lang);
 					// DEBUG
-					//echo imap_last_error();
+					echo imap_last_error();
 				}
 			} else {
 				echo '<div class="error">'.translate('Username, password or server were blank',$lang).'</div>';
@@ -259,7 +272,8 @@ function renderReply($from,$subject,$message,$lang,$device){
   echo '<div class="label"><span>'.strtoupper(translate('from',$lang)).':</span> '.htmlspecialchars($from).'</div>';
   echo '<div class="label"><span>'.strtoupper(translate('subject',$lang)).':</span> '.htmlspecialchars($subject).'</div>';
   echo '<div>';
-  echo '<textarea cols="80" rows="15" name="reply">'.$message.'</textarea>';	
+  echo '<textarea cols="80" rows="15" name="reply">'.$message.'</textarea>';
+  echo '<input type="submit" name="reply" />';
   echo '</div>';
 }
 
