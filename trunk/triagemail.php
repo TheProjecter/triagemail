@@ -37,7 +37,7 @@ $device = getDevice();
   </head>
   <body id="triagemail-com">
 	<h1>triagemail.com</h1>
-	<form action="<%=$_SERVER['PHP_SELF']%>" method="post">
+	<form action="<?=$_SERVER['PHP_SELF']?>" method="post">
 <?php
 	
 	if(!checkRequirements()){
@@ -99,7 +99,7 @@ $device = getDevice();
 				$server   = addslashes(trim($_POST['server']));
 				// need to build this better
 				$connectString = '{pop.gmail.com:995/pop3/ssl/novalidate-cert/notls}INBOX';
-				//$connectString = '{imap.gmail.com:993/imap/ssl}INBOX';
+				$connectString = '{imap.gmail.com:993/imap/ssl}INBOX';
 	
 				$mbox = imap_open($connectString, $username, $password);
 				if($mbox){
