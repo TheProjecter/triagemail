@@ -42,7 +42,7 @@ $device = getDevice();
 	
 	if(!checkRequirements()){
 		echo '<div class="error">This version of PHP does NOT have the required libraries. Please see triagemail.com for more information.</div>';
-	} else {	
+	} else {
 		if($_POST['logout']){
 			// distroy all the variable and logout
 			unset($_SESSION['username']);
@@ -50,7 +50,7 @@ $device = getDevice();
 			unset($_SESSION['connectionString']);
 			unset($_SESSION['inTriage']);
 			unset($_SESSION['msg_num']);
-			unset($_SESSION['msg_total']);
+			unset($_SESSION['unread_list']);
 			
 			
 			echo '<div class="message">'.translate('Logged out',$lang).'</div>';
@@ -59,36 +59,49 @@ $device = getDevice();
 		} elseif($_SESSION['inTriage']){
 			// need to reconnect and create an $mbox
 			$mbox = imap_open($_SESSION['connectString'], $_SESSION['username'], $_SESSION['password']);
-			renderMessageCount($_SESSION['msg_num'],$_SESSION['msg_total'],$lang);
 			
-			
+
 			if(!($_POST['act'])){
 				if($_POST['delete']){
 					// delete
-					imap_delete($mbox,$_SESSION['msg_num']);
-					$_SESSION['msg_total']--;
+					imap_delete($mbox,$_SESSION['unread_list'][$_SESSION['curr_index']]);
 					imap_expunge($mbox);
 				} elseif ($_POST['defer']){
 					// do not mark as read, but skip it
-					$_SESSION['msg_num']++;			
 				} elseif($_POST['ignore']) {
 					// ignore
 					//mark as read THIS IS NOT working with POP3 Grrrr!
-					$status = imap_setflag_full($mbox, $_SESSION['msg_num'], "\Seen");
-					$_SESSION['msg_num']++;
+					$status = imap_setflag_full($mbox, $_SESSION['unread_list'][$_SESSION['curr_index']], "\Seen");
 				}
+				$_SESSION['curr_index'] = ($_SESSION['curr_index'])+1;
+							
 				// get next message
-				$header = imap_header($mbox, $_SESSION['msg_num']);
-				$from    = $header->fromaddress;
-				$subject = $header->subject;
-	
-				renderPreview($from,$subject,$lang);
-	
+				if($_SESSION['curr_index'] == count($_SESSION['unread_list'])) {
+					// we have reached the end of the list of unread messages. What do to now?
+					echo '<div class="message">end of triage!</div>';
+					$temp = count(imap_search($mbox,'UNSEEN'));
+					if($temp > 0){
+						echo '<div>There are '.$temp.' messages still un-read</div>';
+						echo '<div>You you wish to QUIT or Triage the remaining '.pluralize('message',$temp).'?</div>';
+					}
+					renderLogout($device,$lang);
+
+					// re-triage the defered messages?
+					// quit?
+			
+				} else {
+					renderMessageCount(($_SESSION['curr_index'])+1,count($_SESSION['unread_list']),$lang);
+					$header = imap_header($mbox, $_SESSION['unread_list'][$_SESSION['curr_index']]);
+					$from    = $header->fromaddress;
+					$subject = $header->subject;
+					renderPreview($from,$subject,$lang);
+				}
+
 			} else {
 				echo 'reply box here';
 			}
 			
-			renderLogout($device,$lang);		
+			renderLogout($device,$lang);
 			// clean-up			
 			imap_close($mbox);
 		} elseif($_POST['login']) {
@@ -105,30 +118,31 @@ $device = getDevice();
 				$mbox = @imap_open($connectString, $username, $password);
 				if($mbox){
 					//$num_msg = imap_num_msg($mbox);
-					$num_msg = imap_num_msg($mbox);
-					//$num_msg = $num_msg->unseen;
-	
-					if($num_msg > 0){
-					  renderMessageCount(1,$num_msg,$lang);
-					  
-					  $header = imap_header($mbox, 1);
+					$unread_list = imap_search($mbox,'UNSEEN');
+
+					if($unread_list){
+					  renderMessageCount(1,count($unread_list),$lang);
+					  $header = imap_header($mbox, $unread_list[0]);
 					  $from    = $header->fromaddress;
 					  $subject = $header->subject;
 					  				  
 					  renderPreview($from,$subject,$lang);
+
+						// setup session variables so we can loop through emails individually w/o having to constantly login
+						$_SESSION['inTriage'] = true;
+						$_SESSION['username'] = $username;
+						$_SESSION['password'] = $password;
+						$_SESSION['connectString']   = $connectString;
+					
+						$_SESSION['curr_index']  = 0;
+						$_SESSION['unread_list'] = $unread_list;
+
 					} else {
 					  echo '<div class="message">Your Inbox is empty!</div>';
 					}
 					
 					renderLogout($device,$lang);
 					
-					// setup session variables so we can loop through emails individually w/o having to constantly login
-					$_SESSION['inTriage'] = true;
-					$_SESSION['msg_num']  = 1;
-					$_SESSION['username'] = $username;
-					$_SESSION['password'] = $password;
-					$_SESSION['connectString']   = $connectString;
-					$_SESSION['msg_total'] = $num_msg;
 					
 					// clean-up
 					imap_expunge($mbox);
@@ -137,6 +151,8 @@ $device = getDevice();
 				} else {
 					echo '<div class="error">'.translate('There was an error connecting to',$lang).' '.$server.'. '.translate('Please try again',$lang).'.</div>';				
 					renderLogin($device,$lang);
+					// DEBUG
+					//echo imap_last_error();
 				}
 			} else {
 				echo '<div class="error">'.translate('Username, password or server were blank',$lang).'</div>';
