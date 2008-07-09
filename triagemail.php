@@ -102,10 +102,10 @@ $device = getDevice();
 				$connectString = '{imap.gmail.com:993/imap/ssl}INBOX';
 				$connectString = '{'.$server.':993/imap/ssl}INBOX';
 
-				$mbox = imap_open($connectString, $username, $password);
+				$mbox = @imap_open($connectString, $username, $password);
 				if($mbox){
 					//$num_msg = imap_num_msg($mbox);
-					$num_msg = imap_status($mbox,$_SESSION['connectString']);
+					$num_msg = imap_num_msg($mbox);
 					//$num_msg = $num_msg->unseen;
 	
 					if($num_msg > 0){
