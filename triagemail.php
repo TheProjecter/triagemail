@@ -94,11 +94,16 @@ $device = getDevice();
 					$header = imap_header($mbox, $_SESSION['unread_list'][$_SESSION['curr_index']]);
 					$from    = $header->fromaddress;
 					$subject = $header->subject;
-					renderPreview($from,$subject,$lang);
+					renderPreview($from,$subject,$lang,$device);
 				}
 
 			} else {
-				echo 'reply box here';
+				$header = imap_header($mbox, $_SESSION['unread_list'][$_SESSION['curr_index']]);
+				$from    = $header->fromaddress;
+				$subject = $header->subject;
+//				var_dump(imap_fetchstructure($mbox, $_SESSION['unread_list'][$_SESSION['curr_index']]));
+				$message = imap_fetchbody($mbox,$_SESSION['unread_list'][$_SESSION['curr_index']],1);
+				renderReply($from,$subject,$message,$lang,$device);
 			}
 			
 			renderLogout($device,$lang);
@@ -126,7 +131,7 @@ $device = getDevice();
 					  $from    = $header->fromaddress;
 					  $subject = $header->subject;
 					  				  
-					  renderPreview($from,$subject,$lang);
+					  renderPreview($from,$subject,$device,$lang);
 
 						// setup session variables so we can loop through emails individually w/o having to constantly login
 						$_SESSION['inTriage'] = true;
@@ -138,7 +143,7 @@ $device = getDevice();
 						$_SESSION['unread_list'] = $unread_list;
 
 					} else {
-					  echo '<div class="message">Your Inbox is empty!</div>';
+					  echo '<div class="message">Your Inbox has no un-read messages!</div>';
 					}
 					
 					renderLogout($device,$lang);
@@ -250,7 +255,15 @@ function renderLogout($device,$lang){
 	echo '<input type="submit" value="'.translate('Logout',$lang).'" name="logout" class="logout" />';
 }
 
-function renderPreview($from,$subject,$lang){
+function renderReply($from,$subject,$message,$lang,$device){
+  echo '<div class="label"><span>'.strtoupper(translate('from',$lang)).':</span> '.htmlspecialchars($from).'</div>';
+  echo '<div class="label"><span>'.strtoupper(translate('subject',$lang)).':</span> '.htmlspecialchars($subject).'</div>';
+  echo '<div>';
+  echo '<textarea cols="80" rows="15" name="reply">'.$message.'</textarea>';	
+  echo '</div>';
+}
+
+function renderPreview($from,$subject,$lang,$device){
   echo '<div class="label"><span>'.strtoupper(translate('from',$lang)).':</span> '.htmlspecialchars($from).'</div>';
   echo '<div class="label"><span>'.strtoupper(translate('subject',$lang)).':</span> '.htmlspecialchars($subject).'</div>';
   echo '<div>';
