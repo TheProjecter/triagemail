@@ -34,6 +34,7 @@ $device = getDevice();
 		.ignore { color: white; position: absolute; left: 680px; display: block; width: 200px; text-align: center; top: 270px;}
 		form { padding: 0 20px;}
 	</style>
+	<link rel="apple-touch-icon" href="http://triagemail.com/images/apple-icon.png"/>
   </head>
   <body id="triagemail-com">
 	<h1>triagemail.com</h1>
